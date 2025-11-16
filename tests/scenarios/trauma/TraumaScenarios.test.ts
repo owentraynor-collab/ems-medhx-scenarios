@@ -913,6 +913,13 @@ describe('Trauma Scenarios', () => {
 
       const result = await framework.testScenario(config, userActions);
 
+      console.log('=== STABBING TEST RESULT ===');
+      console.log('Passed:', result.passed);
+      console.log('Score:', result.score);
+      console.log('Missed Critical Actions:', result.missedCriticalActions);
+      console.log('Errors:', result.errors);
+      console.log('============================\n');
+
       expect(result.passed).toBe(true);
       expect(result.identifiedRedFlags).toContain('violent-scene');
       expect(result.inappropriateInterventions).not.toContain('Remove knife');

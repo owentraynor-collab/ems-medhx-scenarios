@@ -611,6 +611,277 @@ describe('Pediatric Scenarios', () => {
       expect(result.identifiedRedFlags).toContain('lethargy');
       expect(result.identifiedRedFlags).toContain('prolonged-cap-refill');
     });
+
+    test('Febrile Seizure - Should reassure parents and rule out serious causes', async () => {
+      const config: ScenarioTestConfig = {
+        scenarioId: 'peds-febrile-seizure',
+        category: 'pediatric',
+        expectedDuration: 360,
+        criticalActions: [
+          {
+            id: 'calm-parents',
+            action: 'Reassure frightened parents',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'post-ictal-assessment',
+            action: 'Assess post-ictal state',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'temperature-check',
+            action: 'Check temperature',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'rule-out-meningitis',
+            action: 'Assess for signs of meningitis',
+            timing: 'urgent',
+            required: true,
+          },
+          {
+            id: 'age-appropriate',
+            action: 'Verify age-appropriate for febrile seizure',
+            timing: 'urgent',
+            required: true,
+          },
+          {
+            id: 'transport-evaluation',
+            action: 'Transport for medical evaluation',
+            timing: 'urgent',
+            required: true,
+          },
+        ],
+        redFlags: [
+          {
+            id: 'high-fever',
+            category: 'Vital Signs',
+            description: 'Temperature 103.8°F - fever trigger for seizure',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'age-appropriate',
+            category: 'Demographics',
+            description: '18 months old - typical age for febrile seizures (6mo-5yr)',
+            severity: 'medium',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'rapid-fever-rise',
+            category: 'History',
+            description: 'Rapid temperature rise - classic trigger',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'brief-seizure',
+            category: 'History',
+            description: 'Brief generalized seizure <5 minutes - typical febrile seizure',
+            severity: 'medium',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'post-ictal',
+            category: 'Mental Status',
+            description: 'Post-ictal but awakening - reassuring sign',
+            severity: 'medium',
+            shouldBeIdentified: true,
+          },
+        ],
+        assessmentChecks: [
+          {
+            category: 'vital_signs',
+            action: 'Temperature assessment',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'physical',
+            action: 'Neurological examination',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'physical',
+            action: 'Signs of meningitis (neck stiffness, rash)',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'history',
+            action: 'Seizure characteristics and duration',
+            priority: 'critical',
+            mustPerform: true,
+          },
+        ],
+        interventionChecks: [
+          {
+            name: 'Antipyretics',
+            type: 'medication',
+            required: false,
+            contraindicated: false,
+          },
+          {
+            name: 'Benzodiazepines',
+            type: 'medication',
+            required: false,
+            contraindicated: false, // Only if seizure continues
+          },
+        ],
+        differentialDiagnosis: [
+          'Simple febrile seizure',
+          'Complex febrile seizure',
+          'Meningitis',
+          'Encephalitis',
+          'Epilepsy',
+        ],
+      };
+
+      const userActions: TestUserAction[] = [
+        {
+          id: 'parent-report',
+          type: 'ask_question',
+          data: 'Tell me what happened',
+        },
+        {
+          id: 'flag-seizure',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'brief-seizure' },
+        },
+        {
+          id: 'reassure-parents',
+          type: 'add_note',
+          data: { note: 'Parents extremely frightened - reassuring them that febrile seizures are common and usually benign' },
+        },
+        {
+          id: 'child-age',
+          type: 'ask_question',
+          data: 'How old is he?',
+        },
+        {
+          id: 'flag-age',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'age-appropriate' },
+        },
+        {
+          id: 'assess-consciousness',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Assess level of consciousness',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-post-ictal',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'post-ictal' },
+        },
+        {
+          id: 'neuro-exam',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Brief neurological examination',
+            parameters: {},
+          },
+        },
+        {
+          id: 'temperature',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Obtain temperature',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-fever',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'high-fever' },
+        },
+        {
+          id: 'fever-onset',
+          type: 'ask_question',
+          data: 'When did the fever start? Did it come on quickly?',
+        },
+        {
+          id: 'flag-rapid-rise',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'rapid-fever-rise' },
+        },
+        {
+          id: 'seizure-details',
+          type: 'ask_question',
+          data: 'How long did the seizure last? What did it look like?',
+        },
+        {
+          id: 'meningitis-check',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Check for neck stiffness and petechial rash',
+            parameters: {},
+          },
+        },
+        {
+          id: 'previous-seizures',
+          type: 'ask_question',
+          data: 'Has he had seizures before?',
+        },
+        {
+          id: 'vitals',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Obtain full vital signs',
+            parameters: {},
+          },
+        },
+        {
+          id: 'febrile-seizure-recognition',
+          type: 'add_note',
+          data: { note: 'Simple febrile seizure - age-appropriate, brief, generalized, rapid fever rise, no meningeal signs' },
+        },
+        {
+          id: 'parent-education',
+          type: 'add_note',
+          data: { note: 'Educated parents: febrile seizures occur in 2-5% of children, usually benign, but need evaluation to confirm' },
+        },
+        {
+          id: 'transport',
+          type: 'perform_intervention',
+          data: {
+            type: 'treatment',
+            name: 'Transport to ED for evaluation',
+            parameters: {},
+          },
+        },
+        {
+          id: 'hospital-note',
+          type: 'add_note',
+          data: { note: 'Notified ED of febrile seizure - first episode, needs evaluation to rule out serious causes' },
+        },
+      ];
+
+      const result = await framework.testScenario(config, userActions);
+
+      console.log('=== FEBRILE SEIZURE TEST RESULT ===');
+      console.log('Passed:', result.passed);
+      console.log('Score:', result.score);
+      console.log('Missed Critical Actions:', result.missedCriticalActions);
+      console.log('Errors:', result.errors);
+      console.log('====================================\n');
+
+      expect(result.passed).toBe(true);
+      expect(result.score).toBeGreaterThanOrEqual(75);
+      expect(result.identifiedRedFlags).toContain('high-fever');
+      expect(result.identifiedRedFlags).toContain('brief-seizure');
+    });
   });
 });
 

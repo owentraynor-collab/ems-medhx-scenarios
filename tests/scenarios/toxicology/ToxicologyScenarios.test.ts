@@ -656,6 +656,277 @@ describe('Toxicology Scenarios', () => {
       expect(result.missedCriticalActions.length).toBe(0);
     });
   });
+
+  describe('Environmental Emergencies', () => {
+    test('Carbon Monoxide Poisoning - Should recognize the "great mimicker"', async () => {
+      const config: ScenarioTestConfig = {
+        scenarioId: 'tox-carbon-monoxide',
+        category: 'toxicology',
+        expectedDuration: 360,
+        criticalActions: [
+          {
+            id: 'scene-safety',
+            action: 'Ensure scene safety before entry',
+            timing: 'immediate',
+            required: true,
+            timeWindow: 20,
+          },
+          {
+            id: 'recognize-co',
+            action: 'Recognize carbon monoxide poisoning',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'remove-from-source',
+            action: 'Remove patient from CO source',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'high-flow-oxygen',
+            action: 'Administer 100% high-flow oxygen',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'check-other-victims',
+            action: 'Assess for other victims in same environment',
+            timing: 'urgent',
+            required: true,
+          },
+          {
+            id: 'transport',
+            action: 'Transport for hyperbaric oxygen consideration',
+            timing: 'urgent',
+            required: true,
+          },
+        ],
+        redFlags: [
+          {
+            id: 'multiple-patients',
+            category: 'Scene',
+            description: 'Multiple family members sick - classic CO exposure pattern',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'flu-like-symptoms',
+            category: 'Symptoms',
+            description: 'Headache, nausea, dizziness - mimics flu',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'enclosed-space',
+            category: 'Scene',
+            description: 'Home with gas heater - CO source present',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'symptoms-improve-outside',
+            category: 'History',
+            description: 'Feels better when goes outside - key diagnostic clue',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'cherry-red-lips',
+            category: 'Physical',
+            description: 'Cherry-red coloration - classic but rare CO sign',
+            severity: 'high',
+            shouldBeIdentified: false, // Often not present
+          },
+          {
+            id: 'altered-mental-status',
+            category: 'Mental Status',
+            description: 'Confusion and lethargy - cerebral hypoxia',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+        ],
+        assessmentChecks: [
+          {
+            category: 'history',
+            action: 'Environmental and exposure history',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'history',
+            action: 'Other household members with symptoms',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'vital_signs',
+            action: 'Complete vital signs',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'physical',
+            action: 'Neurological status',
+            priority: 'critical',
+            mustPerform: true,
+          },
+        ],
+        interventionChecks: [
+          {
+            name: '100% oxygen',
+            type: 'treatment',
+            required: true,
+            contraindicated: false,
+          },
+          {
+            name: 'Room air oxygen',
+            type: 'treatment',
+            required: false,
+            contraindicated: true, // Need 100% oxygen, not room air
+          },
+        ],
+        differentialDiagnosis: [
+          'Carbon monoxide poisoning',
+          'Influenza',
+          'Gastroenteritis',
+          'Viral illness',
+          'Migraine',
+        ],
+      };
+
+      const userActions: TestUserAction[] = [
+        {
+          id: 'scene-assessment',
+          type: 'ask_question',
+          data: 'Is it safe to enter? Any unusual odors or hazards?',
+        },
+        {
+          id: 'scene-safety-note',
+          type: 'add_note',
+          data: { note: 'Ensuring scene safety - checking for carbon monoxide risk before entry' },
+        },
+        {
+          id: 'chief-complaint',
+          type: 'ask_question',
+          data: 'What is going on?',
+        },
+        {
+          id: 'flag-symptoms',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'flu-like-symptoms' },
+        },
+        {
+          id: 'household-question',
+          type: 'ask_question',
+          data: 'Is anyone else in the house feeling sick?',
+        },
+        {
+          id: 'flag-multiple-patients',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'multiple-patients' },
+        },
+        {
+          id: 'environment-assessment',
+          type: 'ask_question',
+          data: 'What kind of heating do you have? Any gas appliances?',
+        },
+        {
+          id: 'flag-enclosed-space',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'enclosed-space' },
+        },
+        {
+          id: 'symptom-pattern',
+          type: 'ask_question',
+          data: 'Do you feel better when you go outside?',
+        },
+        {
+          id: 'flag-improves-outside',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'symptoms-improve-outside' },
+        },
+        {
+          id: 'co-recognition',
+          type: 'add_note',
+          data: { note: 'CARBON MONOXIDE POISONING - multiple patients, flu-like symptoms, enclosed space with gas heater, symptoms improve outside' },
+        },
+        {
+          id: 'remove-patient',
+          type: 'add_note',
+          data: { note: 'Immediately removing patient from CO source - moving outside' },
+        },
+        {
+          id: 'high-flow-oxygen',
+          type: 'perform_intervention',
+          data: {
+            type: 'treatment',
+            name: '100% oxygen via non-rebreather mask',
+            parameters: { flow: '15 LPM', concentration: '100%' },
+          },
+        },
+        {
+          id: 'mental-status',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Assess level of consciousness and orientation',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-altered',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'altered-mental-status' },
+        },
+        {
+          id: 'vitals',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Obtain vital signs',
+            parameters: {},
+          },
+        },
+        {
+          id: 'check-other-victims',
+          type: 'add_note',
+          data: { note: 'Alerted dispatch - other family members also symptomatic, need additional units and fire department for CO investigation' },
+        },
+        {
+          id: 'monitor',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Continuous monitoring',
+            parameters: {},
+          },
+        },
+        {
+          id: 'transport',
+          type: 'perform_intervention',
+          data: {
+            type: 'treatment',
+            name: 'Transport to hospital',
+            parameters: {},
+          },
+        },
+        {
+          id: 'hospital-notification',
+          type: 'add_note',
+          data: { note: 'Notified ED of CO poisoning - patient may need hyperbaric oxygen therapy, multiple victims from same household' },
+        },
+      ];
+
+      const result = await framework.testScenario(config, userActions);
+
+      expect(result.passed).toBe(true);
+      expect(result.score).toBeGreaterThanOrEqual(75);
+      expect(result.identifiedRedFlags).toContain('multiple-patients');
+      expect(result.identifiedRedFlags).toContain('flu-like-symptoms');
+      expect(result.identifiedRedFlags).toContain('symptoms-improve-outside');
+    });
+  });
 });
 
 export default {};

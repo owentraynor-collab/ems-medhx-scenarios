@@ -1,8 +1,8 @@
 # EMS MedHx Clinical Scenario Testing Framework
 
 [![Tests](https://github.com/owentraynor-collab/ems-medhx-scenarios/actions/workflows/scenario-tests.yml/badge.svg)](https://github.com/owentraynor-collab/ems-medhx-scenarios/actions)
-[![Test Count](https://img.shields.io/badge/tests-26%20passing-brightgreen)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
-[![Coverage](https://img.shields.io/badge/coverage-78%25-green)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+[![Test Count](https://img.shields.io/badge/tests-31%20passing-brightgreen)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+[![Coverage](https://img.shields.io/badge/coverage-79%25-green)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
 [![Speed](https://img.shields.io/badge/speed-3.5s-blue)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
 [![Categories](https://img.shields.io/badge/categories-7-orange)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
 
@@ -34,12 +34,12 @@ This testing framework validates that clinical scenarios:
 
 ## ✨ Features
 
-- **Comprehensive Coverage**: Tests for 45+ clinical scenarios across 4 major categories
+- **Comprehensive Coverage**: Tests for 31 clinical scenarios across 7 major categories (Cardiovascular, Medical, Trauma, Neurological, Toxicology, Pediatric, Obstetrics)
 - **Automated Validation**: Verifies critical actions, red flag identification, and assessment completeness
 - **Performance Metrics**: Scoring system based on clinical competency
 - **Detailed Reporting**: Identifies missed actions, inappropriate interventions, and areas for improvement
 - **Extensible Framework**: Easy to add new scenarios and test cases
-- **CI/CD Integration**: Ready for continuous integration pipelines
+- **CI/CD Integration**: Ready for continuous integration pipelines with GitHub Actions
 
 ## 📦 Installation
 

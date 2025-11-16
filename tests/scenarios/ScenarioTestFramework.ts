@@ -762,6 +762,76 @@ export class ScenarioTestFramework {
                     nameLower.includes('medication') || nameLower.includes('bronchodilator')));
           }
           
+          // Reassure/calm frightened parents (pediatric emergencies)
+          if (actionLower.includes('reassure') || actionLower.includes('calm') && actionLower.includes('parents')) {
+            return nameLower.includes('reassur') || nameLower.includes('parents') ||
+                   nameLower.includes('frightened') || nameLower.includes('education');
+          }
+          
+          // Rule out meningitis (febrile seizure, sepsis)
+          if (actionLower.includes('meningitis')) {
+            return (nameLower.includes('meningitis') || nameLower.includes('neck') ||
+                    nameLower.includes('stiffness') || nameLower.includes('petechial') ||
+                    nameLower.includes('rash')) && nameLower.includes('check');
+          }
+          
+          // Verify age-appropriate (pediatric assessments)
+          if (actionLower.includes('age-appropriate') || actionLower.includes('verify age')) {
+            return nameLower.includes('age') || nameLower.includes('old') ||
+                   nameLower.includes('months') || nameLower.includes('years');
+          }
+          
+          // Check/obtain temperature (matches various phrasings)
+          if (actionLower.includes('temperature') && 
+              (actionLower.includes('check') || actionLower.includes('obtain') || actionLower.includes('assess'))) {
+            return nameLower.includes('temperature') && 
+                   (nameLower.includes('check') || nameLower.includes('obtain') || 
+                    nameLower.includes('assess') || nameLower.includes('get'));
+          }
+          
+          // Uterine/fundal massage (postpartum hemorrhage)
+          if (actionLower.includes('uterine massage') || actionLower.includes('fundal massage')) {
+            return (nameLower.includes('uterine') || nameLower.includes('fundal')) &&
+                   nameLower.includes('massage');
+          }
+          
+          // Recognize life-threatening hemorrhage
+          if (actionLower.includes('life-threatening') && actionLower.includes('hemorrhage')) {
+            return (nameLower.includes('life-threatening') || nameLower.includes('hemorrhage') ||
+                    nameLower.includes('bleeding')) && (nameLower.includes('postpartum') ||
+                    nameLower.includes('shock') || nameLower.includes('immediate'));
+          }
+          
+          // Manage for hemorrhagic shock (specific to postpartum hemorrhage, etc.)
+          if (actionLower.includes('hemorrhagic shock')) {
+            return (nameLower.includes('shock') || nameLower.includes('hemorrhagic')) &&
+                   (nameLower.includes('manag') || nameLower.includes('fluids') ||
+                    nameLower.includes('oxygen') || nameLower.includes('warmth'));
+          }
+          
+          // Recognize carbon monoxide poisoning
+          if (actionLower.includes('carbon monoxide') || actionLower.includes('co poisoning')) {
+            return (nameLower.includes('carbon monoxide') || nameLower.includes('co poisoning') ||
+                    nameLower.includes('co ')) && (nameLower.includes('recogni') || 
+                    nameLower.includes('multiple patients') || nameLower.includes('flu-like'));
+          }
+          
+          // Remove from CO source/environment
+          if (actionLower.includes('remove') && actionLower.includes('source')) {
+            return (nameLower.includes('remov') || nameLower.includes('moving')) &&
+                   (nameLower.includes('outside') || nameLower.includes('source') ||
+                    nameLower.includes('co'));
+          }
+          
+          // Check for other victims (CO, mass casualty)
+          if ((actionLower.includes('other victims') || actionLower.includes('other')) && 
+              actionLower.includes('victims')) {
+            return (nameLower.includes('other') || nameLower.includes('family') ||
+                    nameLower.includes('additional')) && (nameLower.includes('units') ||
+                    nameLower.includes('symptomatic') || nameLower.includes('victims') ||
+                    nameLower.includes('members'));
+          }
+          
           // "Do not" actions - check compliance by looking for positive action
           if (actionLower.startsWith('do not') || actionLower.includes('do not remove')) {
             // If the action says "do not remove", check that we stabilize instead
