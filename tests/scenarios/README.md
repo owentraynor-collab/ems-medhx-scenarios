@@ -1,5 +1,11 @@
 # EMS MedHx Clinical Scenario Testing Framework
 
+[![Tests](https://github.com/owentraynor-collab/ems-medhx-scenarios/actions/workflows/scenario-tests.yml/badge.svg)](https://github.com/owentraynor-collab/ems-medhx-scenarios/actions)
+[![Test Count](https://img.shields.io/badge/tests-26%20passing-brightgreen)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+[![Coverage](https://img.shields.io/badge/coverage-78%25-green)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+[![Speed](https://img.shields.io/badge/speed-3.5s-blue)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+[![Categories](https://img.shields.io/badge/categories-7-orange)](https://github.com/owentraynor-collab/ems-medhx-scenarios)
+
 A comprehensive testing framework for validating clinical educational scenarios across all medical categories including cardiovascular, neurological, trauma, and general medical emergencies.
 
 ## 📋 Table of Contents
