@@ -691,6 +691,77 @@ export class ScenarioTestFramework {
                     nameLower.includes('monitor'));
           }
           
+          // Controlled oxygen therapy (COPD management)
+          if (actionLower.includes('controlled oxygen')) {
+            return (nameLower.includes('controlled') || nameLower.includes('nasal cannula') ||
+                    nameLower.includes('2') || nameLower.includes('low flow')) &&
+                   nameLower.includes('oxygen');
+          }
+          
+          // Avoid excessive/high-flow oxygen (critical for COPD)
+          if (actionLower.includes('avoid') && actionLower.includes('oxygen')) {
+            return nameLower.includes('avoid') || nameLower.includes('controlled') ||
+                   nameLower.includes('copd') || nameLower.includes('hypoxic drive');
+          }
+          
+          // Bronchodilator (albuterol, ipratropium)
+          if (actionLower.includes('bronchodilator')) {
+            return nameLower.includes('albuterol') || nameLower.includes('ipratropium') ||
+                   nameLower.includes('bronchodilator') || nameLower.includes('ventolin') ||
+                   nameLower.includes('atrovent');
+          }
+          
+          // Recognize sick child (pediatric sepsis, general illness)
+          if (actionLower.includes('sick child') || 
+              (actionLower.includes('recognize') && actionLower.includes('child'))) {
+            return nameLower.includes('sick') || nameLower.includes('sepsis') ||
+                   nameLower.includes('concerning') || nameLower.includes('subtle');
+          }
+          
+          // IV or IO access (pediatric access)
+          if ((actionLower.includes('iv') || actionLower.includes('io')) && 
+              actionLower.includes('access')) {
+            return (nameLower.includes('iv') || nameLower.includes('io') ||
+                    nameLower.includes('intraosseous') || nameLower.includes('intravenous')) &&
+                   (nameLower.includes('access') || nameLower.includes('establish'));
+          }
+          
+          // Fluid bolus/resuscitation
+          if (actionLower.includes('fluid') && 
+              (actionLower.includes('bolus') || actionLower.includes('resuscitation'))) {
+            return nameLower.includes('fluid') && 
+                   (nameLower.includes('bolus') || nameLower.includes('20') || 
+                    nameLower.includes('ml/kg') || nameLower.includes('rapid'));
+          }
+          
+          // Identify infection source (asking about symptoms or where infection started)
+          if ((actionLower.includes('infection') && actionLower.includes('source')) ||
+              (actionLower.includes('identify') && actionLower.includes('infection')) ||
+              actionLower.includes('source identification')) {
+            // Match questions asking about various infection symptoms or sources
+            const hasSymptomQuestion = nameLower.includes('cough') || nameLower.includes('vomiting') || 
+                                       nameLower.includes('diarrhea') || nameLower.includes('earache');
+            const hasSourceQuestion = (nameLower.includes('where') && 
+                                      (nameLower.includes('infection') || nameLower.includes('started') || nameLower.includes('think')));
+            return hasSymptomQuestion || hasSourceQuestion;
+          }
+          
+          // Obtain respiratory history (COPD, asthma, etc.)
+          if (actionLower.includes('respiratory history')) {
+            return (nameLower.includes('lung') || nameLower.includes('copd') ||
+                    nameLower.includes('asthma') || nameLower.includes('respiratory') ||
+                    nameLower.includes('breathing') || nameLower.includes('oxygen')) &&
+                   (nameLower.includes('problems') || nameLower.includes('history') ||
+                    nameLower.includes('use') || nameLower.includes('home'));
+          }
+          
+          // Monitor response to treatment / Reassess after treatment
+          if (actionLower.includes('monitor response') || actionLower.includes('response to treatment')) {
+            return nameLower.includes('reassess') || nameLower.includes('monitor') ||
+                   (nameLower.includes('after') && (nameLower.includes('treatment') || 
+                    nameLower.includes('medication') || nameLower.includes('bronchodilator')));
+          }
+          
           // "Do not" actions - check compliance by looking for positive action
           if (actionLower.startsWith('do not') || actionLower.includes('do not remove')) {
             // If the action says "do not remove", check that we stabilize instead

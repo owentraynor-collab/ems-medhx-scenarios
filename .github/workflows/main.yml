@@ -1,0 +1,328 @@
+name: EMS MedHx App CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18.x'
+  MONGODB_URI: mongodb://localhost:27017/ems-medhx-test
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  validate:
+    name: Validate and Test
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: |
+          yarn install --frozen-lockfile
+          
+      - name: Type Check
+        run: |
+          yarn workspace server tsc --noEmit
+          yarn workspace mobile tsc --noEmit
+
+      - name: Lint
+        run: |
+          yarn workspace server lint
+          yarn workspace mobile lint
+
+      - name: Unit Tests
+        run: |
+          yarn workspace server test:unit
+          yarn workspace mobile test:unit
+
+      - name: Integration Tests
+        run: yarn workspace server test:integration
+
+      - name: Security Audit
+        run: |
+          yarn audit
+          yarn workspace server test:security
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            server/coverage
+            mobile/coverage
+
+  performance:
+    name: Performance Tests
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build Apps
+        run: |
+          yarn workspace server build
+          yarn workspace mobile build
+
+      - name: Load Tests
+        run: yarn workspace server test:load
+
+      - name: Performance Benchmark
+        run: yarn workspace server test:benchmark
+
+      - name: Upload Performance Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: tests/load/results
+
+  build:
+    name: Build and Package
+    needs: [validate, performance]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build Server
+        run: yarn workspace server build
+
+      - name: Build Mobile App
+        run: |
+          yarn workspace mobile build:android
+          yarn workspace mobile build:ios
+
+      - name: Package Applications
+        run: |
+          docker build -t ems-medhx-server:${{ github.sha }} ./server
+          docker build -t ems-medhx-mobile-builder:${{ github.sha }} ./mobile
+
+      - name: Save Docker Images
+        run: |
+          docker save ems-medhx-server:${{ github.sha }} > server-image.tar
+          docker save ems-medhx-mobile-builder:${{ github.sha }} > mobile-image.tar
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            server-image.tar
+            mobile-image.tar
+            mobile/android/app/build/outputs/apk/release
+            mobile/ios/build/Build/Products/Release-iphoneos
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+
+      - name: Load Docker Images
+        run: |
+          docker load < server-image.tar
+          docker load < mobile-image.tar
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ems-medhx-staging \
+            --service ems-medhx-server \
+            --force-new-deployment
+
+      - name: Deploy Mobile Apps
+        run: |
+          aws s3 cp mobile/android/app/build/outputs/apk/release/app-release.apk \
+            s3://ems-medhx-staging/mobile/android/
+          aws s3 cp mobile/ios/build/Build/Products/Release-iphoneos/EMS-MedHx.ipa \
+            s3://ems-medhx-staging/mobile/ios/
+
+      - name: Run Smoke Tests
+        run: yarn workspace server test:smoke
+
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+
+      - name: Load Docker Images
+        run: |
+          docker load < server-image.tar
+          docker load < mobile-image.tar
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ems-medhx-production \
+            --service ems-medhx-server \
+            --force-new-deployment
+
+      - name: Deploy Mobile Apps
+        run: |
+          aws s3 cp mobile/android/app/build/outputs/apk/release/app-release.apk \
+            s3://ems-medhx-production/mobile/android/
+          aws s3 cp mobile/ios/build/Build/Products/Release-iphoneos/EMS-MedHx.ipa \
+            s3://ems-medhx-production/mobile/ios/
+
+      - name: Run Smoke Tests
+        run: yarn workspace server test:smoke
+
+  monitoring:
+    name: Setup Monitoring
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy CloudWatch Dashboards
+        run: |
+          aws cloudwatch put-dashboard \
+            --dashboard-name ems-medhx-metrics \
+            --dashboard-body file://monitoring/dashboards/main.json
+
+      - name: Setup Alerts
+        run: |
+          aws cloudwatch put-metric-alarm \
+            --alarm-name ems-medhx-high-error-rate \
+            --metric-name ErrorRate \
+            --namespace EMS-MedHx \
+            --statistic Average \
+            --period 300 \
+            --evaluation-periods 2 \
+            --threshold 5 \
+            --comparison-operator GreaterThanThreshold \
+            --alarm-actions ${{ secrets.SNS_ALERT_TOPIC }}
+
+      - name: Configure Log Aggregation
+        run: |
+          aws cloudwatch put-metric-filter \
+            --log-group-name /ems-medhx/application \
+            --filter-name ErrorLogs \
+            --filter-pattern "ERROR" \
+            --metric-transformations \
+              metricName=ErrorCount,metricNamespace=EMS-MedHx,metricValue=1
+
+  notify:
+    name: Send Notifications
+    needs: [deploy-staging, deploy-production, monitoring]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send Email Notification
+        if: github.ref == 'refs/heads/main'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Deployment Status - EMS MedHx App
+          body: |
+            Deployment to production completed.
+            
+            Status: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            
+            For more details, visit:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+

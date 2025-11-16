@@ -1,0 +1,150 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["EMS-MedHx", "SystemHealth", { "stat": "Average" }],
+          ["EMS-MedHx", "ErrorRate", { "stat": "Average" }],
+          ["EMS-MedHx", "ResponseTime", { "stat": "Average" }]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "System Overview",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["EMS-MedHx", "ActiveUsers", { "stat": "Sum" }],
+          ["EMS-MedHx", "ActiveScenarios", { "stat": "Sum" }],
+          ["EMS-MedHx", "CompletedAssessments", { "stat": "Sum" }]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "User Activity",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/ECS", "CPUUtilization", "ServiceName", "ems-medhx-server"],
+          ["AWS/ECS", "MemoryUtilization", "ServiceName", "ems-medhx-server"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Server Resources",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 6,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "ems-medhx-db"],
+          ["AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "ems-medhx-db"],
+          ["AWS/RDS", "WriteIOPS", "DBInstanceIdentifier", "ems-medhx-db"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Database Performance",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 6,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/ElastiCache", "CacheHits", "CacheClusterId", "ems-medhx-cache"],
+          ["AWS/ElastiCache", "CacheMisses", "CacheClusterId", "ems-medhx-cache"],
+          ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "ems-medhx-cache"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Cache Performance",
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 12,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "query": "fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+        "region": "us-east-1",
+        "title": "Error Logs",
+        "view": "table"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["EMS-MedHx", "ScenarioCompletionRate", { "stat": "Average" }],
+          ["EMS-MedHx", "AverageScenarioScore", { "stat": "Average" }],
+          ["EMS-MedHx", "RedFlagIdentificationRate", { "stat": "Average" }]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Learning Metrics",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["EMS-MedHx", "SyncQueueLength", { "stat": "Average" }],
+          ["EMS-MedHx", "SyncSuccessRate", { "stat": "Average" }],
+          ["EMS-MedHx", "OfflineOperations", { "stat": "Sum" }]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Sync Performance",
+        "period": 300
+      }
+    }
+  ]
+}
+

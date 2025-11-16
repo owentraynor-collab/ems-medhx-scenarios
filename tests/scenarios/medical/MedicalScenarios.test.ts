@@ -1209,6 +1209,325 @@ describe('Medical Assessment Scenarios', () => {
       expect(result.identifiedRedFlags).toContain('recent-surgery');
       expect(result.identifiedRedFlags).toContain('hypoxia');
     });
+
+    test('COPD Exacerbation - Should differentiate from asthma and manage oxygen carefully', async () => {
+      const config: ScenarioTestConfig = {
+        scenarioId: 'medical-copd-exacerbation',
+        category: 'shortness_of_breath',
+        expectedDuration: 420,
+        criticalActions: [
+          {
+            id: 'history-copd',
+            action: 'Obtain respiratory history',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'assess-severity',
+            action: 'Assess severity of respiratory distress',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'controlled-oxygen',
+            action: 'Administer controlled oxygen therapy',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'avoid-high-flow',
+            action: 'Avoid excessive oxygen in COPD patient',
+            timing: 'immediate',
+            required: true,
+          },
+          {
+            id: 'bronchodilator',
+            action: 'Administer bronchodilator',
+            timing: 'urgent',
+            required: true,
+          },
+          {
+            id: 'monitor-response',
+            action: 'Monitor response to treatment',
+            timing: 'urgent',
+            required: true,
+          },
+          {
+            id: 'consider-cpap',
+            action: 'Consider CPAP if available',
+            timing: 'urgent',
+            required: false,
+          },
+        ],
+        redFlags: [
+          {
+            id: 'copd-history',
+            category: 'History',
+            description: 'Known COPD with home oxygen - chronic condition',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'chronic-smoker',
+            category: 'History',
+            description: '40-year smoking history - major risk factor',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'barrel-chest',
+            category: 'Physical',
+            description: 'Barrel chest appearance - chronic air trapping',
+            severity: 'medium',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'productive-cough',
+            category: 'Symptoms',
+            description: 'Productive cough with purulent sputum - infection likely',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'tripod-position',
+            category: 'Physical',
+            description: 'Tripod positioning - severe respiratory distress',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'hypoxia',
+            category: 'Vital Signs',
+            description: 'SpO2 88% on room air - significant hypoxia but expected for COPD',
+            severity: 'critical',
+            shouldBeIdentified: true,
+          },
+          {
+            id: 'accessory-muscles',
+            category: 'Physical',
+            description: 'Using accessory muscles - increased work of breathing',
+            severity: 'high',
+            shouldBeIdentified: true,
+          },
+        ],
+        assessmentChecks: [
+          {
+            category: 'history',
+            action: 'Respiratory disease history',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'vital_signs',
+            action: 'SpO2 and respiratory rate',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'physical',
+            action: 'Lung auscultation',
+            priority: 'critical',
+            mustPerform: true,
+          },
+          {
+            category: 'physical',
+            action: 'Work of breathing assessment',
+            priority: 'critical',
+            mustPerform: true,
+          },
+        ],
+        interventionChecks: [
+          {
+            name: 'High-flow oxygen (>6 LPM)',
+            type: 'treatment',
+            required: false,
+            contraindicated: true, // Dangerous in COPD - can suppress respiratory drive
+          },
+          {
+            name: 'Controlled oxygen (2-4 LPM)',
+            type: 'treatment',
+            required: true,
+            contraindicated: false,
+          },
+          {
+            name: 'Albuterol',
+            type: 'medication',
+            required: true,
+            contraindicated: false,
+          },
+        ],
+        differentialDiagnosis: [
+          'COPD exacerbation',
+          'Asthma exacerbation',
+          'Pneumonia',
+          'Pulmonary embolism',
+          'Heart failure',
+        ],
+      };
+
+      const userActions: TestUserAction[] = [
+        {
+          id: 'chief-complaint',
+          type: 'ask_question',
+          data: 'What brings us out today?',
+        },
+        {
+          id: 'respiratory-history',
+          type: 'ask_question',
+          data: 'Do you have any lung problems? COPD? Asthma? Do you use oxygen at home?',
+        },
+        {
+          id: 'flag-copd',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'copd-history' },
+        },
+        {
+          id: 'smoking-history',
+          type: 'ask_question',
+          data: 'Do you smoke? How long?',
+        },
+        {
+          id: 'flag-smoker',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'chronic-smoker' },
+        },
+        {
+          id: 'observe-position',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Observe patient position and appearance',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-tripod',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'tripod-position' },
+        },
+        {
+          id: 'flag-barrel',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'barrel-chest' },
+        },
+        {
+          id: 'work-of-breathing',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Assess work of breathing and accessory muscle use',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-accessory',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'accessory-muscles' },
+        },
+        {
+          id: 'vitals',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Obtain vital signs including SpO2',
+            parameters: {},
+          },
+        },
+        {
+          id: 'flag-hypoxia',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'hypoxia' },
+        },
+        {
+          id: 'lung-sounds',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Auscultate lung sounds',
+            parameters: {},
+          },
+        },
+        {
+          id: 'cough-assessment',
+          type: 'ask_question',
+          data: 'Are you coughing anything up? What color?',
+        },
+        {
+          id: 'flag-productive',
+          type: 'identify_red_flag',
+          data: { redFlagId: 'productive-cough' },
+        },
+        {
+          id: 'copd-recognition',
+          type: 'add_note',
+          data: { note: 'COPD exacerbation recognized - need controlled oxygen therapy to avoid suppressing respiratory drive' },
+        },
+        {
+          id: 'controlled-oxygen',
+          type: 'perform_intervention',
+          data: {
+            type: 'treatment',
+            name: 'Controlled oxygen via nasal cannula',
+            parameters: { flow: '2-4 LPM', target: 'SpO2 88-92%' },
+          },
+        },
+        {
+          id: 'avoid-high-flow-note',
+          type: 'add_note',
+          data: { note: 'Avoiding high-flow oxygen - COPD patients rely on hypoxic drive, excessive O2 can worsen respiratory failure' },
+        },
+        {
+          id: 'albuterol',
+          type: 'perform_intervention',
+          data: {
+            type: 'medication',
+            name: 'Albuterol nebulizer',
+            parameters: { dose: '2.5mg', delivery: 'continuous if needed' },
+          },
+        },
+        {
+          id: 'monitor',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Continuous monitoring of SpO2 and respiratory status',
+            parameters: {},
+          },
+        },
+        {
+          id: 'reassess',
+          type: 'perform_intervention',
+          data: {
+            type: 'assessment',
+            name: 'Reassess after bronchodilator treatment',
+            parameters: {},
+          },
+        },
+        {
+          id: 'transport',
+          type: 'perform_intervention',
+          data: {
+            type: 'treatment',
+            name: 'Transport to hospital',
+            parameters: {},
+          },
+        },
+        {
+          id: 'hospital-note',
+          type: 'add_note',
+          data: { note: 'Notified ED of COPD exacerbation with likely infectious trigger - may need antibiotics and steroids' },
+        },
+      ];
+
+      const result = await framework.testScenario(config, userActions);
+
+      expect(result.passed).toBe(true);
+      expect(result.score).toBeGreaterThanOrEqual(80);
+      expect(result.identifiedRedFlags).toContain('copd-history');
+      expect(result.identifiedRedFlags).toContain('tripod-position');
+      expect(result.identifiedRedFlags).toContain('hypoxia');
+      expect(result.missedCriticalActions.length).toBe(0);
+    });
   });
 });
 

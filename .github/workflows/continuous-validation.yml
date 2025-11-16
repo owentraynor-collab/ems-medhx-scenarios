@@ -1,0 +1,252 @@
+name: Continuous Validation
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
+  workflow_dispatch:  # Allow manual triggers
+  deployment_status:  # Run after deployments
+  workflow_run:
+    workflows: ["EMS MedHx App CI/CD Pipeline"]
+    types:
+      - completed
+
+env:
+  NODE_VERSION: '18.x'
+  ENVIRONMENT: ${{ github.event.deployment_status.environment || 'production' }}
+
+jobs:
+  validate:
+    name: Validate Environment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run System Validation
+        run: |
+          yarn workspace server validate:system \
+            --environment ${{ env.ENVIRONMENT }} \
+            --output validation-results.json
+
+      - name: Check Validation Results
+        id: check_results
+        run: |
+          FAILURES=$(jq '.validation.failed' validation-results.json)
+          if [ $FAILURES -gt 0 ]; then
+            echo "::set-output name=status::failure"
+            echo "::set-output name=message::Validation failed with $FAILURES issues"
+          else
+            echo "::set-output name=status::success"
+            echo "::set-output name=message::All validations passed"
+          fi
+
+      - name: Auto-Remediation
+        if: steps.check_results.outputs.status == 'failure'
+        run: |
+          yarn workspace server remediate:auto \
+            --environment ${{ env.ENVIRONMENT }} \
+            --validation-results validation-results.json \
+            --output remediation-results.json
+
+      - name: Update Dashboard
+        run: |
+          yarn workspace server dashboard:update \
+            --validation validation-results.json \
+            --remediation remediation-results.json
+
+      - name: Send Notifications
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.check_results.outputs.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            Environment: ${{ env.ENVIRONMENT }}
+            Status: ${{ steps.check_results.outputs.status }}
+            Message: ${{ steps.check_results.outputs.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  performance:
+    name: Performance Validation
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run Performance Tests
+        run: |
+          yarn workspace server test:performance \
+            --environment ${{ env.ENVIRONMENT }} \
+            --output performance-results.json
+
+      - name: Analyze Results
+        id: analyze
+        run: |
+          ISSUES=$(jq '.performance.issues | length' performance-results.json)
+          if [ $ISSUES -gt 0 ]; then
+            echo "::set-output name=status::warning"
+            echo "::set-output name=message::Performance issues detected: $ISSUES"
+          else
+            echo "::set-output name=status::success"
+            echo "::set-output name=message::Performance tests passed"
+          fi
+
+      - name: Update Performance Metrics
+        run: |
+          yarn workspace server dashboard:update-performance \
+            --results performance-results.json
+
+      - name: Performance Alert
+        if: steps.analyze.outputs.status == 'warning'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            Performance Warning:
+            Environment: ${{ env.ENVIRONMENT }}
+            Message: ${{ steps.analyze.outputs.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  security:
+    name: Security Validation
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run Security Audit
+        run: |
+          yarn workspace server security:audit \
+            --environment ${{ env.ENVIRONMENT }} \
+            --output security-results.json
+
+      - name: Analyze Security Results
+        id: security
+        run: |
+          CRITICAL=$(jq '.security.critical | length' security-results.json)
+          HIGH=$(jq '.security.high | length' security-results.json)
+          if [ $CRITICAL -gt 0 ]; then
+            echo "::set-output name=status::failure"
+            echo "::set-output name=message::Critical security issues found: $CRITICAL"
+          elif [ $HIGH -gt 0 ]; then
+            echo "::set-output name=status::warning"
+            echo "::set-output name=message::High security issues found: $HIGH"
+          else
+            echo "::set-output name=status::success"
+            echo "::set-output name=message::Security audit passed"
+          fi
+
+      - name: Update Security Metrics
+        run: |
+          yarn workspace server dashboard:update-security \
+            --results security-results.json
+
+      - name: Security Alert
+        if: steps.security.outputs.status != 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.security.outputs.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            Security Alert:
+            Environment: ${{ env.ENVIRONMENT }}
+            Status: ${{ steps.security.outputs.status }}
+            Message: ${{ steps.security.outputs.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  report:
+    name: Generate Report
+    needs: [validate, performance, security]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download Results
+        uses: actions/download-artifact@v3
+        with:
+          name: validation-results
+
+      - name: Generate Report
+        run: |
+          yarn workspace server report:generate \
+            --validation validation-results.json \
+            --performance performance-results.json \
+            --security security-results.json \
+            --output validation-report.pdf
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: validation-report
+          path: validation-report.pdf
+
+      - name: Send Report
+        if: github.event_name != 'schedule'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Validation Report - ${{ env.ENVIRONMENT }}
+          body: Please find attached the validation report.
+          attachments: validation-report.pdf
+          to: ops-team@example.com
+          from: CI System
+
+  cleanup:
+    name: Cleanup
+    needs: report
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Cleanup Old Reports
+        run: |
+          aws s3 rm s3://ems-medhx-reports/ \
+            --recursive \
+            --exclude "*" \
+            --include "validation-report-*.pdf" \
+            --before $(date -d "7 days ago" +%Y-%m-%d)
+
+      - name: Archive Results
+        run: |
+          aws s3 cp validation-results.json \
+            s3://ems-medhx-reports/history/$(date +%Y-%m-%d)/ \
+            --content-type application/json
+
