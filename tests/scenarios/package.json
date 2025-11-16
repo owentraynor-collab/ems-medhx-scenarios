@@ -1,0 +1,35 @@
+{
+  "name": "ems-medhx-scenario-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive testing framework for EMS MedHx clinical scenarios",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:cardiovascular": "jest cardiovascular/CardiovascularScenarios.test.ts",
+    "test:neurological": "jest neurological/NeurologicalScenarios.test.ts",
+    "test:trauma": "jest trauma/TraumaScenarios.test.ts",
+    "test:medical": "jest medical/MedicalScenarios.test.ts",
+    "test:all": "jest --coverage --verbose",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "report": "open coverage/lcov-report/index.html"
+  },
+  "keywords": [
+    "ems",
+    "medical-education",
+    "testing",
+    "scenario",
+    "clinical"
+  ],
+  "author": "EMS MedHx Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/test-sequencer": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.19",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  }
+}

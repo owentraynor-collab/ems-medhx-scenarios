@@ -1,0 +1,28 @@
+# Test-related files
+node_modules/
+coverage/
+*.log
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test results
+junit.xml
+test-results/
+
+# Temporary files
+*.tmp
+.cache/
+
